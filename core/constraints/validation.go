@@ -6,6 +6,8 @@ package constraints
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strings"
 
 	"github.com/juju/collections/set"
 )
@@ -14,7 +16,6 @@ import (
 // used to ensure a constraints value is valid, as well as being able
 // to handle overridden attributes.
 type Validator interface {
-
 	// RegisterConflicts is used to define cross-constraint override behaviour.
 	// The red and blue attribute lists contain attribute names which conflict
 	// with those in the other list.
@@ -186,6 +187,7 @@ func (v *validator) checkValidValues(cons Value) error {
 
 // checkInVocab returns an error if the attribute value is not allowed by the
 // vocab which may have been registered for it.
+//TODO: check here and change
 func (v *validator) checkInVocab(attributeName string, attributeValue interface{}) error {
 	validValues, ok := v.vocab[resolveAlias(attributeName)]
 	if !ok {
@@ -196,8 +198,23 @@ func (v *validator) checkInVocab(attributeName string, attributeValue interface{
 			return nil
 		}
 	}
+	s := constraintSorting(validValues)
+
 	return fmt.Errorf(
-		"invalid constraint value: %v=%v\nvalid values are: %v", attributeName, attributeValue, validValues)
+		"invalid constraint value: %v=%v\nvalid values are: %v", attributeName, attributeValue, s)
+}
+
+//TODO: gonna make a sort for each part
+func constraintSorting(validValues []interface{}) []string {
+	splitters := [2]string{"-", "."}
+	s := make([]string, len(validValues))
+	for i, v := range validValues {
+		formatted := fmt.Sprint(v)
+		strings.Split(formatted, splitters[0])
+		s[i] = formatted
+	}
+	sort.Strings(s)
+	return s
 }
 
 // coerce returns v in a format that allows constraint values to be easily

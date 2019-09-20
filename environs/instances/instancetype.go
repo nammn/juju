@@ -210,3 +210,24 @@ func (s byMemory) Less(i, j int) bool {
 	// Result is in descending order of cost so instance with lowest cost is used.
 	return inst0.Cost > inst1.Cost
 }
+
+//TODO: write a proper compare
+//by Type is used to sort a slice by name by best effort. As we have different separators for different providers
+//we do it by best effort using "-" and "."
+//A possible sort could be:
+//a1.2xlarge, a1.large, lexical sort would put a1.2xlarge before a1.large -- aws
+
+type byType []InstanceType
+
+func (s byType) Len() int      { return len(s) }
+func (s byType) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s byType) Less(i, j int) bool {
+	inst0, inst1 := &s[i], &s[j]
+	//TODO: split here by type
+	if inst0.Name != inst1.Name {
+		return s[i].Name < s[j].Name
+	}
+	// Memory is equal, so use cost as a tie breaker.
+	// Result is in descending order of cost so instance with lowest cost is used.
+	return inst0.Cost > inst1.Cost
+}

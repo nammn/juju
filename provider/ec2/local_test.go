@@ -1389,6 +1389,7 @@ func (t *localServerSuite) TestConstraintsValidatorVocab(c *gc.C) {
 	env := t.Prepare(c)
 	validator, err := env.ConstraintsValidator(t.callCtx)
 	c.Assert(err, jc.ErrorIsNil)
+	//TODO: somewhere here I am getting the information
 	cons := constraints.MustParse("instance-type=foo")
 	_, err = validator.Validate(cons)
 	c.Assert(err, gc.ErrorMatches, "invalid constraint value: instance-type=foo\nvalid values are:.*")
