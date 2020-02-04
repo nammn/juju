@@ -28,7 +28,6 @@ var _ = gc.Suite(&ShowSuite{})
 
 func (s *ShowSuite) SetUpTest(c *gc.C) {
 	s.BaseSpaceSuite.SetUpTest(c)
-	s.newCommand = space.NewShowSpaceCommand
 }
 
 func setUpMocks(c *gc.C) (*gomock.Controller, *mocks.MockSpaceAPI) {
@@ -79,7 +78,7 @@ machine-count: 4
 }
 func (s *ShowSuite) runCommand(c *gc.C, api space.SpaceAPI, name string) (*cmd.Context, error) {
 	base := space.NewSpaceCommandBase(api)
-	command := space.ShowSpaceCommand{
+	command := space.ShowCommand{
 		SpaceCommandBase: base,
 		Name:             "",
 	}

@@ -30719,6 +30719,17 @@
                 "ReloadSpaces": {
                     "type": "object"
                 },
+                "RemoveSpace": {
+                    "type": "object",
+                    "properties": {
+                        "Params": {
+                            "$ref": "#/definitions/Entities"
+                        },
+                        "Result": {
+                            "$ref": "#/definitions/ErrorResults"
+                        }
+                    }
+                },
                 "RenameSpace": {
                     "type": "object",
                     "properties": {
