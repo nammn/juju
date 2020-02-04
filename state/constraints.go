@@ -115,6 +115,27 @@ func writeConstraints(mb modelBackend, id string, cons constraints.Value) error 
 	return nil
 }
 
+func (st *State) ConstraintsForSpaceName(name string) ([]constraints.Value, error) {
+	constraintsCollection, closer := st.db().GetCollection(constraintsC)
+	defer closer()
+
+	var docs []constraintsDoc
+	negatedSpace := fmt.Sprintf("^%v", name)
+	query := bson.D{{"$or", []bson.D{
+		{{"spaces", name}},
+		{{"spaces", negatedSpace}},
+	}}}
+	err := constraintsCollection.Find(query).All(&docs)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	cons := make([]constraints.Value, len(docs))
+	for i, doc := range docs {
+		cons[i] = doc.value()
+	}
+	return cons, nil
+}
+
 // ConstraintsOpsForSpaceNameChange returns all the database transaction operation required
 // to transform a constraints spaces from `a` to `b`
 func (st *State) ConstraintsOpsForSpaceNameChange(from, to string) ([]txn.Op, error) {

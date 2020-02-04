@@ -19,12 +19,12 @@ import (
 )
 
 // NewAddCommand returns a command used to add a network space.
-func NewShowSpaceCommand() modelcmd.ModelCommand {
-	return modelcmd.Wrap(&ShowSpaceCommand{})
+func NewShowCommand() modelcmd.ModelCommand {
+	return modelcmd.Wrap(&ShowCommand{})
 }
 
-// ShowSpaceCommand calls the API to add a new network space.
-type ShowSpaceCommand struct {
+// ShowCommand calls the API to add a new network space.
+type ShowCommand struct {
 	SpaceCommandBase
 	Name string
 
@@ -37,13 +37,13 @@ Output includes the space subnets, applications with bindings to the space,
 and a count of machines connected to the space.`
 
 // SetFlags implements part of the cmd.Command interface.
-func (c *ShowSpaceCommand) SetFlags(f *gnuflag.FlagSet) {
+func (c *ShowCommand) SetFlags(f *gnuflag.FlagSet) {
 	c.ModelCommandBase.SetFlags(f)
 	c.out.AddFlags(f, "yaml", output.DefaultFormatters)
 }
 
 // Info is defined on the cmd.Command interface.
-func (c *ShowSpaceCommand) Info() *cmd.Info {
+func (c *ShowCommand) Info() *cmd.Info {
 	return jujucmd.Info(&cmd.Info{
 		Name:    "show-space",
 		Args:    "<name>",
@@ -54,7 +54,7 @@ func (c *ShowSpaceCommand) Info() *cmd.Info {
 
 // Init is defined on the cmd.Command interface. It checks the
 // arguments for sanity and sets up the command to run.
-func (c *ShowSpaceCommand) Init(args []string) error {
+func (c *ShowCommand) Init(args []string) error {
 	if lArgs := len(args); lArgs != 1 {
 		return errors.Errorf("expected exactly 1 space name, got %d arguments", lArgs)
 	}
@@ -63,7 +63,7 @@ func (c *ShowSpaceCommand) Init(args []string) error {
 }
 
 // Run implements Command.Run.
-func (c *ShowSpaceCommand) Run(ctx *cmd.Context) error {
+func (c *ShowCommand) Run(ctx *cmd.Context) error {
 	return c.RunWithAPI(ctx, func(api SpaceAPI, ctx *cmd.Context) error {
 		// Add the new space.
 		spaceInformation, err := api.ShowSpace(c.Name)

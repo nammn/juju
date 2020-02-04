@@ -154,6 +154,18 @@ func (api *API) ReloadSpaces() error {
 	return err
 }
 
+// ReloadSpaces reloads spaces from substrate
+func (api *API) RemoveSpace(name string) error {
+	args := params.Entities{
+		Entities: []params.Entity{{Tag: names.NewSpaceTag(name).String()}},
+	}
+	err := api.facade.FacadeCall("RemoveSpace", args, nil)
+	if params.IsCodeNotSupported(err) {
+		return errors.NewNotSupported(nil, err.Error())
+	}
+	return err
+}
+
 func (api *API) RenameSpace(oldName string, newName string) error {
 	var response params.ErrorResults
 	spaceRenameParams := make([]params.RenameSpaceParams, 1)

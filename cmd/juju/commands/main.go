@@ -437,7 +437,7 @@ func registerCommands(r commandRegistry, ctx *cmd.Context) {
 	r.Register(space.NewAddCommand())
 	r.Register(space.NewListCommand())
 	r.Register(space.NewReloadCommand())
-	r.Register(space.NewShowSpaceCommand())
+	r.Register(space.NewShowCommand())
 	if featureflag.Enabled(feature.PostNetCLIMVP) {
 		r.Register(space.NewRemoveCommand())
 		r.Register(space.NewUpdateCommand())
