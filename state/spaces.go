@@ -117,7 +117,7 @@ func (s *Space) NetworkSpace() (network.SpaceInfo, error) {
 func (s *Space) RemoveSpaceOps() []txn.Op {
 	return []txn.Op{
 		{
-			C:      volumesC,
+			C:      spacesC,
 			Id:     s.doc.DocId,
 			Assert: txn.DocExists,
 			Remove: true,
