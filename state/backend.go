@@ -4,10 +4,12 @@
 package state
 
 import (
+	"strings"
 	"time"
 
 	"github.com/juju/clock"
 	"github.com/juju/errors"
+	names_v3 "gopkg.in/juju/names.v3"
 
 	"github.com/juju/juju/state/watcher"
 )
@@ -55,6 +57,24 @@ func (st *State) localID(id string) string {
 		return id
 	}
 	return localID
+}
+
+// ParseLocalIDToTags tries to parse a DocID e.g. `c9741ea1-0c2a-444d-82f5-787583a48557:a#mediawiki
+// to a corresponding Tag. In the above case -> applicationTag.
+func (st *State) ParseLocalIDToTags(docID string) names_v3.Tag {
+	val := st.localID(docID)
+	switch {
+	case strings.HasPrefix(val, "#a"):
+		return names_v3.NewApplicationTag(val)
+	case strings.HasPrefix(val, "#m"):
+		return names_v3.NewMachineTag(val)
+	case strings.HasPrefix(val, "#u"):
+		return names_v3.NewUnitTag(val)
+	case strings.HasPrefix(val, "e"):
+		return names_v3.NewModelTag(val)
+	default:
+		return nil
+	}
 }
 
 func (st *State) strictLocalID(id string) (string, error) {

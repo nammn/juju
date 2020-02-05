@@ -30859,7 +30859,7 @@
                             "$ref": "#/definitions/Entities"
                         },
                         "Result": {
-                            "$ref": "#/definitions/ErrorResults"
+                            "$ref": "#/definitions/RemoveSpaceResults"
                         }
                     }
                 },
@@ -31011,6 +31011,46 @@
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/Space"
+                            }
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "results"
+                    ]
+                },
+                "RemoveSpaceResult": {
+                    "type": "object",
+                    "properties": {
+                        "controller-settings": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "entities": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Entity"
+                            }
+                        },
+                        "error": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "entities",
+                        "controller-settings"
+                    ]
+                },
+                "RemoveSpaceResults": {
+                    "type": "object",
+                    "properties": {
+                        "results": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/RemoveSpaceResult"
                             }
                         }
                     },

@@ -57,6 +57,22 @@ type EntitiesResult struct {
 	Error    *Error   `json:"error,omitempty"`
 }
 
+// RemoveSpaceResults contains multiple RemoveSpace results (where each
+// Entities is the result of a query).
+type RemoveSpaceResults struct {
+	Results []RemoveSpaceResult `json:"results"`
+}
+
+// RemoveSpaceResult contains entries if removing a space is not possible.
+// Entities can be of any kind (machines, applications..) which has a connection to a space.
+// Hence, does not allow deletion.
+// Error is filled if an error has occured which is unexpected.
+type RemoveSpaceResult struct {
+	Entities           []Entity `json:"entities, omitempty"`
+	ControllerSettings []string `json:"controller-settings, omitempty"`
+	Error              *Error   `json:"error,omitempty"`
+}
+
 // EntityPasswords holds the parameters for making a SetPasswords call.
 type EntityPasswords struct {
 	Changes []EntityPassword `json:"changes"`

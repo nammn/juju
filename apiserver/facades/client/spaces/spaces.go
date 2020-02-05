@@ -5,6 +5,7 @@ package spaces
 
 import (
 	"fmt"
+	jujucontroller "github.com/juju/juju/controller"
 	"strings"
 
 	"github.com/juju/collections/set"
@@ -73,6 +74,13 @@ type Backing interface {
 
 	// ApplyOperation applies a given ModelOperation to the model.
 	ApplyOperation(state.ModelOperation) error
+
+	// ConstraintsTagForSpaceName returns the tags for the given space.
+	ConstraintsTagForSpaceName(name string) ([]names.Tag, error)
+
+	IsControllerModel() (bool, error)
+
+	ControllerConfig() (jujucontroller.Config, error)
 }
 
 // APIv2 provides the spaces API facade for versions < 3.

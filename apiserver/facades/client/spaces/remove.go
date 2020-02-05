@@ -9,8 +9,6 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/juju/apiserver/common"
 	"github.com/juju/juju/apiserver/params"
-	jujucontroller "github.com/juju/juju/controller"
-	"github.com/juju/juju/core/constraints"
 	"github.com/juju/juju/core/permission"
 	"github.com/juju/juju/state"
 	"gopkg.in/juju/names.v3"
@@ -30,12 +28,6 @@ type RemoveSpace interface {
 // * This allows us to indirect state at the operation level instead of the
 // * whole API level as currently done in interface.go
 type RemoveSpaceState interface {
-	// ControllerConfig returns current ControllerConfig.
-	ControllerConfig() (jujucontroller.Config, error)
-
-	// ConstraintsOpsForSpaceNameChange returns all the database transaction operation required
-	// to transform a constraints spaces from `a` to `b`
-	ConstraintsForSpaceName(name string) ([]constraints.Value, error)
 }
 
 type removeSpaceStateShim struct {
@@ -43,60 +35,47 @@ type removeSpaceStateShim struct {
 }
 
 type spaceRemoveModelOp struct {
-	st           RemoveSpaceState
-	isController bool
-	space        RemoveSpace
+	st    RemoveSpaceState
+	space RemoveSpace
 }
 
 func (o *spaceRemoveModelOp) Done(err error) error {
 	return err
 }
 
-func NewRemoveSpaceModelOp(isController bool, st RemoveSpaceState, space RemoveSpace) *spaceRemoveModelOp {
+func NewRemoveSpaceModelOp(st RemoveSpaceState, space RemoveSpace) *spaceRemoveModelOp {
 	return &spaceRemoveModelOp{
-		st:           st,
-		space:        space,
-		isController: isController,
+		st:    st,
+		space: space,
 	}
 }
 
 func (sp *spaceRemoveModelOp) Build(attempt int) ([]txn.Op, error) {
-	if sp.isController {
-		//	check if space is used
-		// controller setting if model == controller model
-	}
-
-	// check constraint -> ConstraintsOpsForSpaceNameChange
-	// TODO: problem, we need id/name to show what constraints are missing
-	constraints, err := sp.st.ConstraintsForSpaceName(sp.space.Name())
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	if len(constraints) != 0 {
-		return nil, errors.New("removing space is not possible because of existing constraints: %q")
-	}
+	// get subnets
+	// get move subnets ops
+	// get remove space ops
 	totalops := sp.space.RemoveSpaceOps()
 	return totalops, nil
 }
 
 // RefreshSpaces refreshes spaces from substrate
-func (api *API) RemoveSpace(entities params.Entities) (params.ErrorResults, error) {
-	// TODO: don' allow provider provided spaces
+func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults, error) {
 	isAdmin, err := api.auth.HasPermission(permission.AdminAccess, api.backing.ModelTag())
 	if err != nil && !errors.IsNotFound(err) {
-		return params.ErrorResults{}, errors.Trace(err)
+		return params.RemoveSpaceResults{}, errors.Trace(err)
 	}
 	if !isAdmin {
-		return params.ErrorResults{}, common.ServerError(common.ErrPerm)
+		return params.RemoveSpaceResults{}, common.ServerError(common.ErrPerm)
 	}
 	if err := api.check.ChangeAllowed(); err != nil {
-		return params.ErrorResults{}, errors.Trace(err)
+		return params.RemoveSpaceResults{}, errors.Trace(err)
 	}
-	if err := api.checkSupportsSpaces(); err != nil {
-		return params.ErrorResults{}, common.ServerError(errors.Trace(err))
+	if err = api.checkSupportsProviderSpaces(); err != nil {
+		return params.RemoveSpaceResults{}, common.ServerError(errors.Trace(err))
 	}
-	results := params.ErrorResults{
-		Results: make([]params.ErrorResult, len(entities.Entities)),
+
+	results := params.RemoveSpaceResults{
+		Results: make([]params.RemoveSpaceResult, len(entities.Entities)),
 	}
 	for i, entity := range entities.Entities {
 		spacesTag, err := names.ParseSpaceTag(entity.Tag)
@@ -108,16 +87,35 @@ func (api *API) RemoveSpace(entities params.Entities) (params.ErrorResults, erro
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
-		applications, err := api.getApplicationsBindSpace(space.Id())
+		applicationTags, err := api.getApplicationTagsPerSpace(space.Id())
+		// bindings check
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
-		// endpoint bindings
-		// TODO: maybe move?
-		if len(applications) != 0 {
-			newErr := errors.Errorf("removing space is not possible, applications %q are bind to it.", applications)
-			results.Results[i].Error = common.ServerError(newErr)
+		if len(applicationTags) != 0 {
+			results.Results[i].Entities = convertTagsToEntities(applicationTags)
+			continue
+		}
+		// constraints check
+		constraintTags, err := api.filterConstraints(space.Name())
+		if err != nil {
+			results.Results[i].Error = common.ServerError(errors.Trace(err))
+			continue
+		}
+		if len(constraintTags) != 0 {
+			results.Results[i].Entities = convertTagsToEntities(constraintTags)
+			continue
+		}
+
+		// controller check
+		matches, err := api.checkControllerForSpace(space.Name())
+		if err != nil {
+			results.Results[i].Error = common.ServerError(errors.Trace(err))
+			continue
+		}
+		if len(matches) != 0 {
+			results.Results[i].ControllerSettings = matches
 			continue
 		}
 
@@ -135,4 +133,65 @@ func (api *API) RemoveSpace(entities params.Entities) (params.ErrorResults, erro
 		}
 	}
 	return results, nil
+}
+
+func (api *API) getApplicationTagsPerSpace(spaceID string) ([]names.Tag, error) {
+	applications, err := api.getApplicationsBindSpace(spaceID)
+	if err != nil {
+		return nil, errors.Trace(nil)
+	}
+	tags := make([]names.Tag, len(applications))
+	for i, app := range applications {
+		if tag, err := names.ParseApplicationTag(app); err == nil {
+			tags[i] = tag
+		} else {
+			return nil, errors.Trace(err)
+		}
+	}
+	return tags, nil
+}
+
+func convertTagsToEntities(tags []names.Tag) []params.Entity {
+	entities := make([]params.Entity, len(tags))
+	for i, tag := range tags {
+		entities[i].Tag = tag.String()
+	}
+
+	return entities
+}
+
+func (api *API) filterConstraints(spaceName string) ([]names.Tag, error) {
+	tags, err := api.backing.ConstraintsTagForSpaceName(spaceName)
+	var notSkipping []names.Tag
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	for _, tag := range tags {
+		if tag.Kind() != names.MachineTagKind {
+			notSkipping = append(notSkipping, tag)
+		}
+	}
+	return notSkipping, nil
+}
+
+func (api *API) checkControllerForSpace(spaceName string) ([]string, error) {
+	var matches []string
+	currentControllerConfig, err := api.backing.ControllerConfig()
+	if err != nil {
+		return matches, errors.Trace(err)
+	}
+	is, err := api.backing.IsControllerModel()
+	if err != nil {
+		return matches, errors.Trace(err)
+	}
+	if !is {
+		return matches, nil
+	}
+	if mgmtSpace := currentControllerConfig.JujuManagementSpace(); mgmtSpace == spaceName {
+		matches = append(matches, mgmtSpace)
+	}
+	if haSpace := currentControllerConfig.JujuHASpace(); haSpace == spaceName {
+		matches = append(matches, haSpace)
+	}
+	return matches, nil
 }
