@@ -31022,16 +31022,22 @@
                 "RemoveSpaceResult": {
                     "type": "object",
                     "properties": {
+                        "bindings": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Entity"
+                            }
+                        },
+                        "constraints": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Entity"
+                            }
+                        },
                         "controller-settings": {
                             "type": "array",
                             "items": {
                                 "type": "string"
-                            }
-                        },
-                        "entities": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/Entity"
                             }
                         },
                         "error": {
@@ -31040,8 +31046,8 @@
                     },
                     "additionalProperties": false,
                     "required": [
-                        "entities",
-                        "entities",
+                        "constraints",
+                        "bindings",
                         "controller-settings"
                     ]
                 },
