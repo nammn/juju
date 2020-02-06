@@ -57,18 +57,18 @@ type EntitiesResult struct {
 	Error    *Error   `json:"error,omitempty"`
 }
 
-// RemoveSpaceResults contains multiple RemoveSpace results (where each
-// Entities is the result of a query).
+// RemoveSpaceResults contains multiple RemoveSpace results.
 type RemoveSpaceResults struct {
 	Results []RemoveSpaceResult `json:"results"`
 }
 
 // RemoveSpaceResult contains entries if removing a space is not possible.
-// Entities can be of any kind (machines, applications..) which has a connection to a space.
-// Hence, does not allow deletion.
+// Constraints are a slice of entities which has constraints on the space.
+// Bindings are a slice of entities which has bindings on that space.
 // Error is filled if an error has occured which is unexpected.
 type RemoveSpaceResult struct {
-	Entities           []Entity `json:"entities, omitempty"`
+	Constraints        []Entity `json:"entities, omitempty"`
+	Bindings           []Entity `json:"entities, omitempty"`
 	ControllerSettings []string `json:"controller-settings, omitempty"`
 	Error              *Error   `json:"error,omitempty"`
 }
