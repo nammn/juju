@@ -34,7 +34,6 @@ import (
 	"github.com/juju/juju/state"
 	statemocks "github.com/juju/juju/state/mocks"
 	"github.com/juju/juju/testing"
-	coretesting "github.com/juju/juju/testing"
 )
 
 // This package contains the move from stub to mocking. Therefore the package is not "*._test"
@@ -636,7 +635,7 @@ func (sb *stubBacking) AllMachines() ([]spaces.Machine, error) {
 
 // This is the old testing suite
 type SpacesSuite struct {
-	coretesting.BaseSuite
+	testing.BaseSuite
 	apiservertesting.StubNetwork
 
 	resources  *common.Resources

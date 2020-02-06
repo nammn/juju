@@ -8,6 +8,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/juju/errors"
+	jc "github.com/juju/testing/checkers"
+	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/apiserver/facades/client/spaces"
 	"github.com/juju/juju/apiserver/facades/client/spaces/mocks"
@@ -15,8 +17,6 @@ import (
 	"github.com/juju/juju/core/settings"
 	"github.com/juju/juju/state"
 	"github.com/juju/juju/testing"
-	jc "github.com/juju/testing/checkers"
-	gc "gopkg.in/check.v1"
 )
 
 type SpaceRenameSuite struct {

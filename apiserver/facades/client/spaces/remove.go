@@ -44,23 +44,25 @@ func NewRemoveSpaceModelOp(space RemoveSpace, subnets []Subnet) *spaceRemoveMode
 }
 
 func (sp *spaceRemoveModelOp) Build(attempt int) ([]txn.Op, error) {
+	var totalOps []txn.Op
+
 	if attempt > 0 {
 		if err := sp.space.Refresh(); err != nil {
 			return nil, errors.Trace(err)
 		}
 	}
 
-	var totalOps []txn.Op
-	// set to dead and ensure, but skipped for now.
 	for _, subnet := range sp.subnets {
 		totalOps = append(totalOps, subnet.MoveSubnetOps(network.AlphaSpaceId)...)
 	}
+
 	removeOps := sp.space.RemoveSpaceOps()
 	totalOps = append(totalOps, removeOps...)
 	return totalOps, nil
 }
 
-// RefreshSpaces refreshes spaces from substrate
+// RemoveSpace removes a space.
+// Returns SpaceResults if entities/settings are found which makes the deletion not possible.
 func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults, error) {
 	isAdmin, err := api.auth.HasPermission(permission.AdminAccess, api.backing.ModelTag())
 	if err != nil && !errors.IsNotFound(err) {
@@ -102,7 +104,7 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			skip = true
 		}
 
-		constraintTags, err := api.filterConstraints(space.Name())
+		constraintTags, err := api.getConstraintsTagsPerSpace(space.Name())
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
@@ -112,7 +114,7 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			skip = true
 		}
 
-		matches, err := api.checkControllerForSpace(space.Name())
+		matches, err := api.getSpaceControllerSettings(space.Name())
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
@@ -131,8 +133,6 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
-
-		// after ops successfull do we need to update the subnet cache?
 		if err = api.backing.ApplyOperation(operation); err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
@@ -162,7 +162,7 @@ func convertTagsToEntities(tags []names.Tag) []params.Entity {
 	return entities
 }
 
-func (api *API) filterConstraints(spaceName string) ([]names.Tag, error) {
+func (api *API) getConstraintsTagsPerSpace(spaceName string) ([]names.Tag, error) {
 	tags, err := api.backing.ConstraintsTagForSpaceName(spaceName)
 	var notSkipping []names.Tag
 	if err != nil {
@@ -180,7 +180,7 @@ func (api *API) filterConstraints(spaceName string) ([]names.Tag, error) {
 	return notSkipping, nil
 }
 
-func (api *API) checkControllerForSpace(spaceName string) ([]string, error) {
+func (api *API) getSpaceControllerSettings(spaceName string) ([]string, error) {
 	var matches []string
 	is, err := api.backing.IsControllerModel()
 	if err != nil {

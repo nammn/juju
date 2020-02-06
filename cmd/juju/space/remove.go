@@ -4,7 +4,6 @@
 package space
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/juju/cmd"
@@ -62,11 +61,12 @@ func (c *RemoveCommand) Init(args []string) (err error) {
 // Run implements Command.Run.
 func (c *RemoveCommand) Run(ctx *cmd.Context) error {
 	return c.RunWithAPI(ctx, func(api SpaceAPI, ctx *cmd.Context) error {
+		// Remove the space.
 		err := api.RemoveSpace(c.name)
 		if err != nil {
 			return errors.Annotatef(err, "cannot remove space %q", c.name)
 		}
-		_, err = ctx.Stdout.Write([]byte(fmt.Sprintf("removed space %q", c.name)))
-		return err
+		ctx.Infof("removed space %q", c.name)
+		return nil
 	})
 }

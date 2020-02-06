@@ -5,7 +5,6 @@ package spaces
 
 import (
 	"fmt"
-	jujucontroller "github.com/juju/juju/controller"
 	"strings"
 
 	"github.com/juju/collections/set"
@@ -17,6 +16,7 @@ import (
 	"github.com/juju/juju/apiserver/common/networkingcommon"
 	"github.com/juju/juju/apiserver/facade"
 	"github.com/juju/juju/apiserver/params"
+	jujucontroller "github.com/juju/juju/controller"
 	"github.com/juju/juju/core/network"
 	"github.com/juju/juju/core/permission"
 	"github.com/juju/juju/environs"
@@ -78,8 +78,10 @@ type Backing interface {
 	// ConstraintsTagForSpaceName returns the tags for the given space.
 	ConstraintsTagForSpaceName(name string) ([]names.Tag, error)
 
+	// Returns whether the current model is the controller model
 	IsControllerModel() (bool, error)
 
+	// Returns the controller config
 	ControllerConfig() (jujucontroller.Config, error)
 }
 
