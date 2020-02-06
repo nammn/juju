@@ -123,7 +123,12 @@ func (st *State) ConstraintsTagForSpaceName(name string) ([]names.Tag, error) {
 	}
 	tags := make([]names.Tag, len(docs))
 	for i, doc := range docs {
-		tags[i] = st.ParseLocalIDToTags(doc.DocID)
+		tag := st.ParseLocalIDToTags(doc.DocID)
+		if tag == nil {
+			logger.Debugf("Could not parse id: %q", doc.DocID)
+			return nil, errors.Errorf("Could not parse id: %q", doc.DocID)
+		}
+		tags[i] = tag
 	}
 	return tags, nil
 }
