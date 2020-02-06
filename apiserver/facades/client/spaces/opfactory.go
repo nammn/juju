@@ -5,13 +5,14 @@ package spaces
 
 import (
 	"github.com/juju/errors"
+
 	"github.com/juju/juju/state"
 )
 
 // OpFactory describes a source of model operations
 // required by the spaces API.
 type OpFactory interface {
-	// NewRenameSpaceModelOp returns an operation for removing a space.
+	// NewRemoveSpaceModelOp returns an operation for removing a space.
 	NewRemoveSpaceModelOp(fromName string) (state.ModelOperation, error)
 
 	// NewRenameSpaceModelOp returns an operation for renaming a space.
@@ -26,7 +27,7 @@ func newOpFactory(st *state.State) OpFactory {
 	return &opFactory{st: st}
 }
 
-// NewRenameSpaceModelOp (OpFactory) returns an operation
+// NewRemoveSpaceModelOp (OpFactory) returns an operation
 // for removing a space.
 func (f *opFactory) NewRemoveSpaceModelOp(fromName string) (state.ModelOperation, error) {
 	space, err := f.st.SpaceByName(fromName)

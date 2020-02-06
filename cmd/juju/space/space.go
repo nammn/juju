@@ -33,6 +33,11 @@ type SpaceAPI interface {
 	// space and subnets access to public or private.
 	AddSpace(name string, subnetIds []string, public bool) error
 
+	// TODO(dimitern): All of the following api methods should take
+	// names.SpaceTag instead of name, the only exceptions are
+	// AddSpace, and RenameSpace as the named space doesn't exist
+	// yet.
+
 	// RemoveSpace removes an existing Juju network space, transferring
 	// any associated subnets to the default space.
 	RemoveSpace(name string) error
@@ -141,10 +146,6 @@ func (m *APIShim) ListSpaces() ([]params.Space, error) {
 }
 
 func (m *APIShim) ReloadSpaces() error {
-	return m.facade.ReloadSpaces()
-}
-
-func (m *APIShim) RemoveSpace(name string) error {
 	return m.facade.ReloadSpaces()
 }
 

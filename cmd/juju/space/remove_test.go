@@ -4,8 +4,6 @@
 package space_test
 
 import (
-	"github.com/juju/cmd"
-	"github.com/juju/cmd/cmdtesting"
 	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
@@ -23,18 +21,15 @@ var _ = gc.Suite(&RemoveSuite{})
 func (s *RemoveSuite) SetUpTest(c *gc.C) {
 	s.BaseSuite.SetFeatureFlags(feature.PostNetCLIMVP)
 	s.BaseSpaceSuite.SetUpTest(c)
+	s.newCommand = space.NewRemoveCommand
 }
 
 func (s *RemoveSuite) TestInit(c *gc.C) {
-	ctrl, api := setUpMocks(c)
-	defer ctrl.Finish()
-	validSpaceName := "myspace"
-	api.EXPECT().RemoveSpace(validSpaceName).Return(nil)
-
 	for i, test := range []struct {
-		about     string
-		args      []string
-		expectErr string
+		about      string
+		args       []string
+		expectName string
+		expectErr  string
 	}{{
 		about:     "no arguments",
 		expectErr: "space name is required",
@@ -43,51 +38,49 @@ func (s *RemoveSuite) TestInit(c *gc.C) {
 		args:      s.Strings("%inv$alid", "new-name"),
 		expectErr: `"%inv\$alid" is not a valid space name`,
 	}, {
-		about:     "multiple space names aren't allowed",
-		args:      s.Strings("a-space", "another-space"),
-		expectErr: `unrecognized args: \["another-space"\]`,
+		about:      "multiple space names aren't allowed",
+		args:       s.Strings("a-space", "another-space"),
+		expectErr:  `unrecognized args: \["another-space"\]`,
+		expectName: "a-space",
 	}, {
-		about: "delete a valid space name",
-		args:  s.Strings(validSpaceName),
+		about:      "delete a valid space name",
+		args:       s.Strings("myspace"),
+		expectName: "myspace",
 	}} {
 		c.Logf("test #%d: %s", i, test.about)
-		_, err := s.runCommand(c, api, test.args...)
+		command, err := s.InitCommand(c, test.args...)
 		if test.expectErr != "" {
 			prefixedErr := "invalid arguments specified: " + test.expectErr
 			c.Check(err, gc.ErrorMatches, prefixedErr)
+		} else {
+			c.Check(err, jc.ErrorIsNil)
+			command := command.(*space.RemoveCommand)
+			c.Check(command.Name(), gc.Equals, test.expectName)
 		}
+		// No API calls should be recorded at this stage.
+		s.api.CheckCallNames(c)
 	}
 }
 
 func (s *RemoveSuite) TestRunWithValidSpaceSucceeds(c *gc.C) {
-	ctrl, api := setUpMocks(c)
-	defer ctrl.Finish()
-	spaceName := "myspace"
-	expectedStdout := `removed space "myspace"`
-	api.EXPECT().RemoveSpace(spaceName).Return(nil)
+	s.AssertRunSucceeds(c,
+		`removed space "myspace"\n`,
+		"", // no stdout, just stderr
+		"myspace",
+	)
 
-	ctx, err := s.runCommand(c, api, spaceName)
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(cmdtesting.Stdout(ctx), gc.Equals, expectedStdout)
+	s.api.CheckCallNames(c, "RemoveSpace", "Close")
+	s.api.CheckCall(c, 0, "RemoveSpace", "myspace")
 }
 
 func (s *RemoveSuite) TestRunWhenSpacesAPIFails(c *gc.C) {
-	ctrl, api := setUpMocks(c)
-	defer ctrl.Finish()
-	spaceName := "myspace"
-	bam := errors.New("bam")
-	api.EXPECT().RemoveSpace(spaceName).Return(bam)
+	s.api.SetErrors(errors.New("boom"))
 
-	ctx, err := s.runCommand(c, api, spaceName)
-	c.Assert(err, gc.ErrorMatches, bam.Error())
-	c.Assert(cmdtesting.Stdout(ctx), gc.Equals, "")
-	c.Assert(cmdtesting.Stderr(ctx), gc.Equals, "")
-}
+	s.AssertRunFails(c,
+		`cannot remove space "myspace": boom`,
+		"myspace",
+	)
 
-func (s *RemoveSuite) runCommand(c *gc.C, api space.SpaceAPI, name ...string) (*cmd.Context, error) {
-	base := space.NewSpaceCommandBase(api)
-	command := space.RemoveCommand{
-		SpaceCommandBase: base,
-	}
-	return cmdtesting.RunCommand(c, &command, name...)
+	s.api.CheckCallNames(c, "RemoveSpace", "Close")
+	s.api.CheckCall(c, 0, "RemoveSpace", "myspace")
 }
