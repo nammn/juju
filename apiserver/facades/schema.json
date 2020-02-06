@@ -31044,12 +31044,7 @@
                             "$ref": "#/definitions/Error"
                         }
                     },
-                    "additionalProperties": false,
-                    "required": [
-                        "constraints",
-                        "bindings",
-                        "controller-settings"
-                    ]
+                    "additionalProperties": false
                 },
                 "RemoveSpaceResults": {
                     "type": "object",
