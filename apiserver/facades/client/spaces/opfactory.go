@@ -5,7 +5,6 @@ package spaces
 
 import (
 	"github.com/juju/errors"
-
 	"github.com/juju/juju/state"
 )
 
@@ -34,7 +33,15 @@ func (f *opFactory) NewRemoveSpaceModelOp(fromName string) (state.ModelOperation
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	return NewRemoveSpaceModelOp(&removeSpaceStateShim{f.st}, space), nil
+	subnets, err := space.Subnets()
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	n := make([]Subnet, len(subnets))
+	for i, subnet := range subnets {
+		n[i] = subnet
+	}
+	return NewRemoveSpaceModelOp(space, n), nil
 }
 
 // NewRenameSpaceModelOp (OpFactory) returns an operation
