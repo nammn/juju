@@ -13,51 +13,51 @@ import (
 	"github.com/juju/juju/apiserver/common"
 	"github.com/juju/juju/apiserver/params"
 	"github.com/juju/juju/controller"
+	"github.com/juju/juju/core/network"
 	"github.com/juju/juju/core/permission"
-	"github.com/juju/juju/state"
 )
 
 // RemoveSpace describes a space that can be removed.
 type RemoveSpace interface {
 	Refresh() error
-	Id() string
-	Name() string
 	RemoveSpaceOps() []txn.Op
 }
 
-// RemoveSpaceState describes state operations required
-// to execute the renameSpace operation.
-// * This allows us to indirect state at the operation level instead of the
-// * whole API level as currently done in interface.go
-type RemoveSpaceState interface {
-}
-
-type removeSpaceStateShim struct {
-	*state.State
-}
-
 type spaceRemoveModelOp struct {
-	st    RemoveSpaceState
-	space RemoveSpace
+	space   RemoveSpace
+	subnets []Subnet
+}
+
+type Subnet interface {
+	MoveSubnetOps(spaceID string) []txn.Op
 }
 
 func (o *spaceRemoveModelOp) Done(err error) error {
 	return err
 }
 
-func NewRemoveSpaceModelOp(st RemoveSpaceState, space RemoveSpace) *spaceRemoveModelOp {
+func NewRemoveSpaceModelOp(space RemoveSpace, subnets []Subnet) *spaceRemoveModelOp {
 	return &spaceRemoveModelOp{
-		st:    st,
-		space: space,
+		space:   space,
+		subnets: subnets,
 	}
 }
 
 func (sp *spaceRemoveModelOp) Build(attempt int) ([]txn.Op, error) {
-	// get subnets
-	// get move subnets ops
-	// get remove space ops
-	totalops := sp.space.RemoveSpaceOps()
-	return totalops, nil
+	if attempt > 0 {
+		if err := sp.space.Refresh(); err != nil {
+			return nil, errors.Trace(err)
+		}
+	}
+
+	var totalOps []txn.Op
+	// set to dead and ensure, but skipped for now.
+	for _, subnet := range sp.subnets {
+		totalOps = append(totalOps, subnet.MoveSubnetOps(network.AlphaSpaceId)...)
+	}
+	removeOps := sp.space.RemoveSpaceOps()
+	totalOps = append(totalOps, removeOps...)
+	return totalOps, nil
 }
 
 // RefreshSpaces refreshes spaces from substrate
@@ -91,8 +91,8 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
+
 		bindingTags, err := api.getApplicationTagsPerSpace(space.Id())
-		// bindings check
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
@@ -101,7 +101,7 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			results.Results[i].Bindings = convertTagsToEntities(bindingTags)
 			skip = true
 		}
-		// constraints check
+
 		constraintTags, err := api.filterConstraints(space.Name())
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
@@ -112,7 +112,6 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			skip = true
 		}
 
-		// controller check
 		matches, err := api.checkControllerForSpace(space.Name())
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
@@ -127,14 +126,13 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			continue
 		}
 
-		// create operation factory
 		operation, err := api.opFactory.NewRemoveSpaceModelOp(spacesTag.Id())
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
 
-		// apply operations
+		// after ops successfull do we need to update the subnet cache?
 		if err = api.backing.ApplyOperation(operation); err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
