@@ -7,12 +7,14 @@ package spaces
 
 import (
 	"github.com/juju/errors"
-	"github.com/juju/juju/apiserver/common"
-	"github.com/juju/juju/apiserver/params"
-	"github.com/juju/juju/core/permission"
-	"github.com/juju/juju/state"
 	"gopkg.in/juju/names.v3"
 	"gopkg.in/mgo.v2/txn"
+
+	"github.com/juju/juju/apiserver/common"
+	"github.com/juju/juju/apiserver/params"
+	"github.com/juju/juju/controller"
+	"github.com/juju/juju/core/permission"
+	"github.com/juju/juju/state"
 )
 
 // RemoveSpace describes a space that can be removed.
@@ -78,24 +80,26 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 		Results: make([]params.RemoveSpaceResult, len(entities.Entities)),
 	}
 	for i, entity := range entities.Entities {
+		skip := false
 		spacesTag, err := names.ParseSpaceTag(entity.Tag)
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
+			continue
 		}
 		space, err := api.backing.SpaceByName(spacesTag.Id())
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
-		applicationTags, err := api.getApplicationTagsPerSpace(space.Id())
+		bindingTags, err := api.getApplicationTagsPerSpace(space.Id())
 		// bindings check
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
-		if len(applicationTags) != 0 {
-			results.Results[i].Entities = convertTagsToEntities(applicationTags)
-			continue
+		if len(bindingTags) != 0 {
+			results.Results[i].Bindings = convertTagsToEntities(bindingTags)
+			skip = true
 		}
 		// constraints check
 		constraintTags, err := api.filterConstraints(space.Name())
@@ -104,8 +108,8 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 			continue
 		}
 		if len(constraintTags) != 0 {
-			results.Results[i].Entities = convertTagsToEntities(constraintTags)
-			continue
+			results.Results[i].Constraints = convertTagsToEntities(constraintTags)
+			skip = true
 		}
 
 		// controller check
@@ -116,6 +120,10 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 		}
 		if len(matches) != 0 {
 			results.Results[i].ControllerSettings = matches
+			skip = true
+		}
+
+		if skip {
 			continue
 		}
 
@@ -142,11 +150,7 @@ func (api *API) getApplicationTagsPerSpace(spaceID string) ([]names.Tag, error) 
 	}
 	tags := make([]names.Tag, len(applications))
 	for i, app := range applications {
-		if tag, err := names.ParseApplicationTag(app); err == nil {
-			tags[i] = tag
-		} else {
-			return nil, errors.Trace(err)
-		}
+		tags[i] = names.NewApplicationTag(app)
 	}
 	return tags, nil
 }
@@ -167,19 +171,19 @@ func (api *API) filterConstraints(spaceName string) ([]names.Tag, error) {
 		return nil, errors.Trace(err)
 	}
 	for _, tag := range tags {
-		if tag.Kind() != names.MachineTagKind {
-			notSkipping = append(notSkipping, tag)
+		if tag.Kind() == names.UnitTagKind {
+			continue
 		}
+		if tag.Kind() == names.MachineTagKind {
+			continue
+		}
+		notSkipping = append(notSkipping, tag)
 	}
 	return notSkipping, nil
 }
 
 func (api *API) checkControllerForSpace(spaceName string) ([]string, error) {
 	var matches []string
-	currentControllerConfig, err := api.backing.ControllerConfig()
-	if err != nil {
-		return matches, errors.Trace(err)
-	}
 	is, err := api.backing.IsControllerModel()
 	if err != nil {
 		return matches, errors.Trace(err)
@@ -187,11 +191,17 @@ func (api *API) checkControllerForSpace(spaceName string) ([]string, error) {
 	if !is {
 		return matches, nil
 	}
+
+	currentControllerConfig, err := api.backing.ControllerConfig()
+	if err != nil {
+		return matches, errors.Trace(err)
+	}
+
 	if mgmtSpace := currentControllerConfig.JujuManagementSpace(); mgmtSpace == spaceName {
-		matches = append(matches, mgmtSpace)
+		matches = append(matches, controller.JujuManagementSpace)
 	}
 	if haSpace := currentControllerConfig.JujuHASpace(); haSpace == spaceName {
-		matches = append(matches, haSpace)
+		matches = append(matches, controller.JujuHASpace)
 	}
 	return matches, nil
 }

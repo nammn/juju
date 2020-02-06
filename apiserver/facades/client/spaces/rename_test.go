@@ -5,8 +5,10 @@ package spaces_test
 
 import (
 	"fmt"
+
 	"github.com/golang/mock/gomock"
 	"github.com/juju/errors"
+
 	"github.com/juju/juju/apiserver/facades/client/spaces"
 	"github.com/juju/juju/apiserver/facades/client/spaces/mocks"
 	"github.com/juju/juju/controller"
