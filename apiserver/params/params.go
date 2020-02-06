@@ -67,9 +67,9 @@ type RemoveSpaceResults struct {
 // Bindings are a slice of entities which has bindings on that space.
 // Error is filled if an error has occured which is unexpected.
 type RemoveSpaceResult struct {
-	Constraints        []Entity `json:"constraints, omitempty"`
-	Bindings           []Entity `json:"bindings, omitempty"`
-	ControllerSettings []string `json:"controller-settings, omitempty"`
+	Constraints        []Entity `json:"constraints,omitempty"`
+	Bindings           []Entity `json:"bindings,omitempty"`
+	ControllerSettings []string `json:"controller-settings,omitempty"`
 	Error              *Error   `json:"error,omitempty"`
 }
 
