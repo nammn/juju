@@ -159,7 +159,7 @@ func NewAPI(st *state.State, res facade.Resources, auth facade.Authorizer) (*API
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	return newAPIWithBacking(stateShim, common.NewBlockChecker(st), state.CallContext(st), res, auth, newOpFactory(st))
+	return newAPIWithBacking(stateShim, common.NewBlockChecker(st), state.CallContext(st), res, auth, newOpFactory(st, stateShim))
 }
 
 // newAPIWithBacking creates a new server-side Spaces API facade with

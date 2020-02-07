@@ -20,11 +20,12 @@ type OpFactory interface {
 }
 
 type opFactory struct {
-	st *state.State
+	st   *state.State
+	shim *stateShim
 }
 
-func newOpFactory(st *state.State) OpFactory {
-	return &opFactory{st: st}
+func newOpFactory(st *state.State, shim *stateShim) OpFactory {
+	return &opFactory{st: st, shim: shim}
 }
 
 // NewRemoveSpaceModelOp (OpFactory) returns an operation
@@ -53,9 +54,9 @@ func (f *opFactory) NewRenameSpaceModelOp(fromName, toName string) (state.ModelO
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	model, err := f.st.Model()
+	isController, err := f.shim.IsControllerModel()
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	return NewRenameSpaceModelOp(model.IsControllerModel(), controllerSettings, &renameSpaceStateShim{f.st}, space, toName), nil
+	return NewRenameSpaceModelOp(isController, controllerSettings, &renameSpaceStateShim{f.st}, space, toName), nil
 }
