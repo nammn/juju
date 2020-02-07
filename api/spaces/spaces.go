@@ -4,6 +4,7 @@
 package spaces
 
 import (
+	"fmt"
 	"github.com/juju/errors"
 	"gopkg.in/juju/names.v3"
 
@@ -142,7 +143,7 @@ func (api *API) ListSpaces() ([]params.Space, error) {
 	return response.Results, err
 }
 
-// ReloadSpaces reloads spaces from substrate
+// ReloadSpaces reloads spaces from substrate.
 func (api *API) ReloadSpaces() error {
 	if api.facade.BestAPIVersion() < 3 {
 		return errors.NewNotSupported(nil, "Controller does not support reloading spaces")
@@ -173,5 +174,18 @@ func (api *API) RenameSpace(oldName string, newName string) error {
 	if err := response.Combine(); err != nil {
 		return errors.Trace(err)
 	}
+	return nil
+}
+
+func (api *API) RemoveSpace(name string) error {
+	var result params.RemoveSpaceResults
+	args := params.Entities{
+		Entities: []params.Entity{{Tag: names.NewSpaceTag(name).String()}},
+	}
+	err := api.facade.FacadeCall("RemoveSpace", args, &result)
+	if params.IsCodeNotSupported(err) {
+		return errors.NewNotSupported(nil, err.Error())
+	}
+	fmt.Println(result)
 	return nil
 }
