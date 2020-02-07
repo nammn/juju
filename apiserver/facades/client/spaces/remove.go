@@ -80,49 +80,14 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 		Results: make([]params.RemoveSpaceResult, len(entities.Entities)),
 	}
 	for i, entity := range entities.Entities {
-		skip := false
 		spacesTag, err := names.ParseSpaceTag(entity.Tag)
 		if err != nil {
 			results.Results[i].Error = common.ServerError(errors.Trace(err))
 			continue
 		}
-		space, err := api.backing.SpaceByName(spacesTag.Id())
-		if err != nil {
-			results.Results[i].Error = common.ServerError(errors.Trace(err))
-			continue
-		}
 
-		bindingTags, err := api.getApplicationTagsPerSpace(space.Id())
-		if err != nil {
-			results.Results[i].Error = common.ServerError(errors.Trace(err))
-			continue
-		}
-		if len(bindingTags) != 0 {
-			results.Results[i].Bindings = convertTagsToEntities(bindingTags)
-			skip = true
-		}
-
-		constraintTags, err := api.getConstraintsTagsPerSpace(space.Name())
-		if err != nil {
-			results.Results[i].Error = common.ServerError(errors.Trace(err))
-			continue
-		}
-		if len(constraintTags) != 0 {
-			results.Results[i].Constraints = convertTagsToEntities(constraintTags)
-			skip = true
-		}
-
-		matches, err := api.getSpaceControllerSettings(space.Name())
-		if err != nil {
-			results.Results[i].Error = common.ServerError(errors.Trace(err))
-			continue
-		}
-		if len(matches) != 0 {
-			results.Results[i].ControllerSettings = matches
-			skip = true
-		}
-
-		if skip {
+		removable := api.checkSpaceIsRemovable(i, spacesTag, &results)
+		if !removable {
 			continue
 		}
 
@@ -137,6 +102,44 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 		}
 	}
 	return results, nil
+}
+
+func (api *API) checkSpaceIsRemovable(index int, spacesTag names.Tag, results *params.RemoveSpaceResults) bool {
+	removable := true
+	space, err := api.backing.SpaceByName(spacesTag.Id())
+	if err != nil {
+		results.Results[index].Error = common.ServerError(errors.Trace(err))
+		return false
+	}
+	bindingTags, err := api.getApplicationTagsPerSpace(space.Id())
+	if err != nil {
+		results.Results[index].Error = common.ServerError(errors.Trace(err))
+		return false
+	}
+	constraintTags, err := api.getConstraintsTagsPerSpace(space.Name())
+	if err != nil {
+		results.Results[index].Error = common.ServerError(errors.Trace(err))
+		return false
+	}
+	matches, err := api.getSpaceControllerSettings(space.Name())
+	if err != nil {
+		results.Results[index].Error = common.ServerError(errors.Trace(err))
+		return false
+	}
+
+	if len(matches) != 0 {
+		results.Results[index].ControllerSettings = matches
+		removable = false
+	}
+	if len(bindingTags) != 0 {
+		results.Results[index].Bindings = convertTagsToEntities(bindingTags)
+		removable = false
+	}
+	if len(constraintTags) != 0 {
+		results.Results[index].Constraints = convertTagsToEntities(constraintTags)
+		removable = false
+	}
+	return removable
 }
 
 func (api *API) getApplicationTagsPerSpace(spaceID string) ([]names.Tag, error) {

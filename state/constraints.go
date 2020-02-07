@@ -117,7 +117,7 @@ func writeConstraints(mb modelBackend, id string, cons constraints.Value) error 
 
 // ConstraintsTagForSpaceName returns the tags for the given space.
 func (st *State) ConstraintsTagForSpaceName(name string) ([]names.Tag, error) {
-	docs, err := st.constraintsBySpaceName(name)
+	docs, err := st.ConstraintsBySpaceName(name)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -133,7 +133,7 @@ func (st *State) ConstraintsTagForSpaceName(name string) ([]names.Tag, error) {
 	return tags, nil
 }
 
-func (st *State) constraintsBySpaceName(name string) ([]constraintsWithID, error) {
+func (st *State) ConstraintsBySpaceName(name string) ([]constraintsWithID, error) {
 	constraintsCollection, closer := st.db().GetCollection(constraintsC)
 	defer closer()
 	var docs []constraintsWithID
@@ -149,7 +149,7 @@ func (st *State) constraintsBySpaceName(name string) ([]constraintsWithID, error
 // ConstraintsOpsForSpaceNameChange returns all the database transaction operation required
 // to transform a constraints spaces from `a` to `b`
 func (st *State) ConstraintsOpsForSpaceNameChange(from, to string) ([]txn.Op, error) {
-	docs, err := st.constraintsBySpaceName(from)
+	docs, err := st.ConstraintsBySpaceName(from)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
