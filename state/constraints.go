@@ -5,6 +5,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/juju/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -14,7 +15,7 @@ import (
 	"github.com/juju/juju/core/instance"
 )
 
-// Constraints represents the state of a constraints.
+// Constraints represents the state of a constraints with an ID.
 type Constraints struct {
 	doc constraintsWithID
 }

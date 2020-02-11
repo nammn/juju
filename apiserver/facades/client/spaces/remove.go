@@ -137,14 +137,14 @@ func (api *API) checkSpaceIsRemovable(index int, spacesTag names.Tag, results *p
 		results.Results[index].Error = common.ServerError(errors.Trace(err))
 		return false
 	}
-	matches, err := api.getSpaceControllerSettings(space.Name())
+	settingMatches, err := api.getSpaceControllerSettings(space.Name())
 	if err != nil {
 		results.Results[index].Error = common.ServerError(errors.Trace(err))
 		return false
 	}
 
-	if len(matches) != 0 {
-		results.Results[index].ControllerSettings = matches
+	if len(settingMatches) != 0 {
+		results.Results[index].ControllerSettings = settingMatches
 		removable = false
 	}
 	if len(bindingTags) != 0 {
