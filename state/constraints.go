@@ -5,8 +5,8 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/juju/errors"
-	"gopkg.in/juju/names.v3"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/mgo.v2/txn"
@@ -14,6 +14,15 @@ import (
 	"github.com/juju/juju/core/constraints"
 	"github.com/juju/juju/core/instance"
 )
+
+// Constraints represents the state of a constraints with an ID.
+type Constraints struct {
+	doc constraintsWithID
+}
+
+func (c *Constraints) ID() string {
+	return c.doc.DocID
+}
 
 // constraintsDoc is the mongodb representation of a constraints.Value.
 type constraintsDoc struct {
@@ -115,25 +124,7 @@ func writeConstraints(mb modelBackend, id string, cons constraints.Value) error 
 	return nil
 }
 
-// ConstraintsTagForSpaceName returns the tags for the given space.
-func (st *State) ConstraintsTagForSpaceName(name string) ([]names.Tag, error) {
-	docs, err := st.constraintsBySpaceName(name)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	tags := make([]names.Tag, len(docs))
-	for i, doc := range docs {
-		tag := st.ParseLocalIDToTags(doc.DocID)
-		if tag == nil {
-			logger.Debugf("Could not parse id: %q", doc.DocID)
-			return nil, errors.Errorf("Could not parse id: %q", doc.DocID)
-		}
-		tags[i] = tag
-	}
-	return tags, nil
-}
-
-func (st *State) constraintsBySpaceName(name string) ([]constraintsWithID, error) {
+func (st *State) ConstraintsBySpaceName(name string) ([]*Constraints, error) {
 	constraintsCollection, closer := st.db().GetCollection(constraintsC)
 	defer closer()
 	var docs []constraintsWithID
@@ -142,14 +133,18 @@ func (st *State) constraintsBySpaceName(name string) ([]constraintsWithID, error
 		{{"spaces", name}},
 		{{"spaces", negatedSpace}},
 	}}}
+	cons := make([]*Constraints, len(docs))
 	err := constraintsCollection.Find(query).All(&docs)
-	return docs, err
+	for i, doc := range docs {
+		cons[i] = &Constraints{doc: doc}
+	}
+	return cons, err
 }
 
 // ConstraintsOpsForSpaceNameChange returns all the database transaction operation required
 // to transform a constraints spaces from `a` to `b`
 func (st *State) ConstraintsOpsForSpaceNameChange(from, to string) ([]txn.Op, error) {
-	docs, err := st.constraintsBySpaceName(from)
+	docs, err := st.ConstraintsBySpaceName(from)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -165,13 +160,13 @@ func (st *State) ConstraintsOpsForSpaceNameChange(from, to string) ([]txn.Op, er
 	return ops, nil
 }
 
-func getConstraintsChanges(cons []constraintsWithID, from, to string) map[string]constraints.Value {
+func getConstraintsChanges(cons []*Constraints, from, to string) map[string]constraints.Value {
 	negatedFrom := fmt.Sprintf("^%v", from)
 	negatedTo := fmt.Sprintf("^%v", to)
 
 	values := make(map[string]constraints.Value, len(cons))
 	for _, con := range cons {
-		values[con.DocID] = con.Nested.value()
+		values[con.ID()] = con.doc.Nested.value()
 	}
 	for _, constraint := range values {
 		spaces := constraint.Spaces

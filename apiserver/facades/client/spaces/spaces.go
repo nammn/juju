@@ -38,6 +38,11 @@ type Machine interface {
 	AllSpaces() (set.Strings, error)
 }
 
+// Constraints defines the methods supported by constraints used in the space context.
+type Constraints interface {
+	ID() string
+}
+
 // ApplicationEndpointBindingsShim is a shim interface for stateless access to ApplicationEndpointBindings
 type ApplicationEndpointBindingsShim struct {
 	AppName  string
@@ -75,14 +80,17 @@ type Backing interface {
 	// ApplyOperation applies a given ModelOperation to the model.
 	ApplyOperation(state.ModelOperation) error
 
-	// ConstraintsTagForSpaceName returns the tags for the given space.
-	ConstraintsTagForSpaceName(name string) ([]names.Tag, error)
-
-	// Returns whether the current model is the controller model
+	// IsControllerModel Returns whether the current model is the controller model
 	IsControllerModel() (bool, error)
 
-	// Returns the controller config
+	// ControllerConfig Returns the controller config
 	ControllerConfig() (jujucontroller.Config, error)
+
+	// ParseLocalIDToTags Returns the corresponding nameTag to a docID
+	ParseLocalIDToTags(docID string) names.Tag
+
+	// ConstraintsBySpaceName  Returns constraints found by spaceName
+	ConstraintsBySpaceName(name string) ([]Constraints, error)
 }
 
 // APIv2 provides the spaces API facade for versions < 3.
@@ -159,7 +167,7 @@ func NewAPI(st *state.State, res facade.Resources, auth facade.Authorizer) (*API
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	return newAPIWithBacking(stateShim, common.NewBlockChecker(st), state.CallContext(st), res, auth, newOpFactory(st))
+	return newAPIWithBacking(stateShim, common.NewBlockChecker(st), state.CallContext(st), res, auth, newOpFactory(st, stateShim))
 }
 
 // newAPIWithBacking creates a new server-side Spaces API facade with
