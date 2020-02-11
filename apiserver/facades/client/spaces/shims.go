@@ -110,3 +110,15 @@ func (s *stateShim) IsControllerModel() (bool, error) {
 	}
 	return true, nil
 }
+
+func (s *stateShim) ConstraintsBySpaceName(spaceName string) ([]Constraints, error) {
+	found, err := s.State.ConstraintsBySpaceName(spaceName)
+	if err != nil {
+		return nil, err
+	}
+	cons := make([]Constraints, len(found))
+	for i, v := range found {
+		cons[i] = v
+	}
+	return cons, nil
+}

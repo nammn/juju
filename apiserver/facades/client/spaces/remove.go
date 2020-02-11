@@ -104,6 +104,22 @@ func (api *API) RemoveSpace(entities params.Entities) (params.RemoveSpaceResults
 	return results, nil
 }
 
+func (api *API) constraintsTagForSpaceName(name string) ([]names.Tag, error) {
+	cons, err := api.backing.ConstraintsBySpaceName(name)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	tags := make([]names.Tag, len(cons))
+	for i, doc := range cons {
+		tag := api.backing.ParseLocalIDToTags(doc.ID())
+		if tag == nil {
+			return nil, errors.Errorf("Could not parse id: %q", doc.ID())
+		}
+		tags[i] = tag
+	}
+	return tags, nil
+}
+
 func (api *API) checkSpaceIsRemovable(index int, spacesTag names.Tag, results *params.RemoveSpaceResults) bool {
 	removable := true
 	space, err := api.backing.SpaceByName(spacesTag.Id())
@@ -164,7 +180,7 @@ func convertTagsToEntities(tags []names.Tag) []params.Entity {
 }
 
 func (api *API) getConstraintsTagsPerSpace(spaceName string) ([]names.Tag, error) {
-	tags, err := api.backing.ConstraintsTagForSpaceName(spaceName)
+	tags, err := api.constraintsTagForSpaceName(spaceName)
 	var notSkipping []names.Tag
 	if err != nil {
 		return nil, errors.Trace(err)
