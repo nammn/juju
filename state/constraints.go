@@ -133,8 +133,9 @@ func (st *State) ConstraintsBySpaceName(name string) ([]*Constraints, error) {
 		{{"spaces", name}},
 		{{"spaces", negatedSpace}},
 	}}}
-	cons := make([]*Constraints, len(docs))
 	err := constraintsCollection.Find(query).All(&docs)
+
+	cons := make([]*Constraints, len(docs))
 	for i, doc := range docs {
 		cons[i] = &Constraints{doc: doc}
 	}

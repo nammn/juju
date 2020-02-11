@@ -110,10 +110,10 @@ func (api *API) constraintsTagForSpaceName(name string) ([]names.Tag, error) {
 		return nil, errors.Trace(err)
 	}
 	tags := make([]names.Tag, len(cons))
-	for i, doc := range cons {
-		tag := api.backing.ParseLocalIDToTags(doc.ID())
+	for i, con := range cons {
+		tag := api.backing.ParseLocalIDToTags(con.ID())
 		if tag == nil {
-			return nil, errors.Errorf("Could not parse id: %q", doc.ID())
+			return nil, errors.Errorf("Could not parse id: %q", con.ID())
 		}
 		tags[i] = tag
 	}

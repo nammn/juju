@@ -4,6 +4,7 @@
 package spaces
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/juju/errors"
 	"gopkg.in/juju/names.v3"
@@ -177,15 +178,47 @@ func (api *API) RenameSpace(oldName string, newName string) error {
 	return nil
 }
 
+// RemoveSpace removes a space.
 func (api *API) RemoveSpace(name string) error {
-	var result params.RemoveSpaceResults
-	args := params.Entities{
+	var response params.RemoveSpaceResults
+	var args params.Entities
+	args = params.Entities{
 		Entities: []params.Entity{{Tag: names.NewSpaceTag(name).String()}},
 	}
-	err := api.facade.FacadeCall("RemoveSpace", args, &result)
-	if params.IsCodeNotSupported(err) {
-		return errors.NewNotSupported(nil, err.Error())
+	err := api.facade.FacadeCall("RemoveSpace", args, &response)
+	if err != nil {
+		if params.IsCodeNotSupported(err) {
+			return errors.NewNotSupported(nil, err.Error())
+		}
+		return errors.Trace(err)
 	}
-	fmt.Println(result)
+	if err := response.Results[0].Error; err != nil {
+		return err
+	}
+	return api.extractRemoveErrorMsg(response, name)
+}
+
+func (api *API) extractRemoveErrorMsg(response params.RemoveSpaceResults, spaceName string) error {
+	var errMsg bytes.Buffer
+	foundErr := false
+	fmt.Fprintf(&errMsg, "Could not remove space: %q\n", spaceName)
+
+	for _, result := range response.Results {
+		if len(result.Constraints) > 0 {
+			foundErr = true
+			fmt.Fprintf(&errMsg, "Found the following constraints: %q\n", result.Constraints)
+		}
+		if len(result.Bindings) > 0 {
+			foundErr = true
+			fmt.Fprintf(&errMsg, "Found the following bindings: %q\n", result.Bindings)
+		}
+		if len(result.ControllerSettings) > 0 {
+			foundErr = true
+			fmt.Fprintf(&errMsg, "Found the following controller settings: %q\n", result.ControllerSettings)
+		}
+	}
+	if foundErr {
+		return errors.New(errMsg.String())
+	}
 	return nil
 }
